@@ -18,8 +18,9 @@ function App() {
       <div className="container mx-auto px-4 py-8 max-w-md">
         <Routes>
           <Route path="/login" element={<Login setUser={setUser} />} />
-          <Route path="/signup" element={<Signup />} />
+          <Route path="/signup" element={<Signup setUser={setUser} />} />
           <Route path="/" element={<PrivateRoute><Dashboard user={user} /></PrivateRoute>} />
+          <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </div>
     </div>
