@@ -16,7 +16,18 @@ app.use(cors());
 app.use(morgan('dev'));
 app.use(express.json());
 
-connectDB();
+const connectDB = async () => {
+  try {
+    // Comment out MongoDB للتجربة
+    // await mongoose.connect(process.env.MONGO_URI);
+    console.log('✅ MongoDB Disabled (Demo Mode)');
+  } catch (error) {
+    console.log('❌ MongoDB Connection Error:', error.message);
+    // لا نوقّف السيرفر، نستمر بدون DB
+    console.log('🚀 Server continues without DB (Demo Mode)');
+  }
+};
+
 
 app.use('/api/auth', authRoutes);
 
