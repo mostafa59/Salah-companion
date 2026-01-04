@@ -1,0 +1,33 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+body {
+  @apply bg-cream text-gray-900 antialiased;
+}
+
+[dir='rtl'] {
+  direction: rtl;
+  text-align: right;
+}
+
+/* Prayer Card Styles */
+.prayer-card {
+  @apply bg-white border-2 border-gray-100 rounded-xl p-6 cursor-pointer hover:shadow-lg transition-all duration-300;
+}
+
+.prayer-card.logged {
+  @apply bg-gradient-to-r from-teal-500 to-teal-600 text-white border-transparent shadow-xl;
+}
+
+.btn-primary {
+  @apply bg-teal-600 hover:bg-teal-700 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-200 shadow-lg;
+}
+
+.btn-secondary {
+  @apply border-2 border-teal-600 text-teal-600 hover:bg-teal-50 font-semibold py-3 px-6 rounded-xl transition-all duration-200;
+}
