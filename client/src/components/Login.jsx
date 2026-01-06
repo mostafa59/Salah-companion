@@ -13,30 +13,62 @@ export default function Login() {
     const result = await login(email, password);
     if (result.success) {
       alert("Login Success!"); 
-      // We will add dashboard redirect later
+      // navigate('/dashboard'); // Uncomment when dashboard is ready
     } else {
-      alert("Error: " + result.error);
+      alert("Login Failed: " + result.error);
     }
   };
 
   return (
-    <div className="flex h-screen justify-center items-center bg-[#218084]">
-       <form onSubmit={handleSubmit} className="bg-white p-8 rounded-lg shadow-md w-96 text-right" dir="rtl">
-          <h2 className="text-2xl font-bold mb-6 text-center text-[#218084]">تسجيل الدخول</h2>
-          <input 
-            className="w-full mb-4 p-2 border rounded"
-            placeholder="البريد الإلكتروني"
-            value={email} onChange={(e) => setEmail(e.target.value)} 
-          />
-          <input 
-            className="w-full mb-6 p-2 border rounded"
-            type="password" placeholder="كلمة المرور"
-            value={password} onChange={(e) => setPassword(e.target.value)} 
-          />
-          <button type="submit" className="w-full bg-[#218084] text-white p-2 rounded hover:bg-opacity-90">
-            دخول
+    <div dir="rtl" className="min-h-screen flex items-center justify-center bg-gradient-to-b from-teal-600 to-teal-800 p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8 transform transition-all hover:scale-[1.01]">
+        
+        {/* Header */}
+        <div className="text-center mb-8">
+          <h1 className="text-4xl font-bold text-teal-600 mb-2">صديقك في الصلاة</h1>
+          <p className="text-gray-500 text-sm">مرحباً بعودتك! سجل الدخول للمتابعة</p>
+        </div>
+
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div>
+            <label className="block text-gray-700 font-medium mb-2 text-sm">البريد الإلكتروني</label>
+            <input 
+              type="email"
+              required
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-600 focus:border-transparent transition-all"
+              placeholder="name@example.com"
+              value={email} 
+              onChange={(e) => setEmail(e.target.value)} 
+            />
+          </div>
+
+          <div>
+            <label className="block text-gray-700 font-medium mb-2 text-sm">كلمة المرور</label>
+            <input 
+              type="password"
+              required
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-600 focus:border-transparent transition-all"
+              placeholder="••••••••"
+              value={password} 
+              onChange={(e) => setPassword(e.target.value)} 
+            />
+          </div>
+
+          <button 
+            type="submit" 
+            className="w-full bg-teal-600 text-white font-bold py-3 rounded-lg hover:bg-teal-800 transition-colors shadow-lg hover:shadow-xl active:scale-95 duration-200"
+          >
+            تسجيل الدخول
           </button>
-       </form>
+        </form>
+
+        {/* Footer */}
+        <div className="mt-6 text-center text-sm text-gray-600">
+          ليس لديك حساب؟{' '}
+          <a href="#" className="text-teal-600 font-bold hover:underline">إنشاء حساب جديد</a>
+        </div>
+      </div>
     </div>
   );
 }
