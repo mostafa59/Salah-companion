@@ -1,20 +1,19 @@
 /** @type {import('tailwindcss').Config} */
 export default {
-  content: ['./index.html', './src/**/*.{js,jsx}'],
+  content: [
+    "./index.html",
+    "./src/**/*.{js,ts,jsx,tsx}",
+  ],
   theme: {
     extend: {
       colors: {
-        'teal': {
-          50: '#f0fdf4',
-          500: '#14b8a6',
-          600: '#0d9488',
-          700: '#0f766e'
+        teal: {
+          600: '#218084', // Our primary brand color
+          800: '#0f4f52', // Darker teal
         },
-        cream: '#FCFCF9',
-        gold: '#D4A574'
+        cream: '#FCFCF9', // Our background color
       }
-    }
+    },
   },
   plugins: [],
-  direction: 'rtl'
-};
+}
