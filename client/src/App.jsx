@@ -1,29 +1,33 @@
-import React, { useState } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
-import Navbar from './components/Navbar.jsx';
-import Login from './pages/Login.jsx';
-import Signup from './pages/Signup.jsx';
-import Dashboard from './pages/Dashboard.jsx';
+// client/src/App.jsx
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider } from './context/AuthContext';
+import Login from './components/Login';
+
+// A simple placeholder for the Dashboard
+const DashboardPlaceholder = () => (
+  <div className="p-10 text-center">
+    <h1 className="text-2xl font-bold text-[#218084]">Welcome to Dashboard</h1>
+    <p>You are logged in!</p>
+  </div>
+);
 
 function App() {
-  const [user, setUser] = useState(null);
-
-  const PrivateRoute = ({ children }) => {
-    return user ? children : <Navigate to="/login" />;
-  };
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-cream to-teal-50" dir="rtl">
-      <Navbar user={user} setUser={setUser} />
-      <div className="container mx-auto px-4 py-8 max-w-md">
+    <AuthProvider>
+      <Router>
         <Routes>
-          <Route path="/login" element={<Login setUser={setUser} />} />
-          <Route path="/signup" element={<Signup setUser={setUser} />} />
-          <Route path="/" element={<PrivateRoute><Dashboard user={user} /></PrivateRoute>} />
-          <Route path="*" element={<Navigate to="/" />} />
+          {/* Default route redirects to Login */}
+          <Route path="/" element={<Navigate to="/login" replace />} />
+          
+          {/* Login Route */}
+          <Route path="/login" element={<Login />} />
+          
+          {/* Protected Dashboard Route */}
+          <Route path="/dashboard" element={<DashboardPlaceholder />} />
         </Routes>
-      </div>
-    </div>
+      </Router>
+    </AuthProvider>
   );
 }
 
