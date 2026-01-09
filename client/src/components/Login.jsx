@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -13,7 +14,7 @@ export default function Login() {
     const result = await login(email, password);
     if (result.success) {
       alert("Login Success!"); 
-      // navigate('/dashboard'); // Uncomment when dashboard is ready
+       navigate('/dashboard'); // Uncomment when dashboard is ready
     } else {
       alert("Login Failed: " + result.error);
     }
@@ -66,7 +67,9 @@ export default function Login() {
         {/* Footer */}
         <div className="mt-6 text-center text-sm text-gray-600">
           ليس لديك حساب؟{' '}
-          <a href="#" className="text-teal-600 font-bold hover:underline">إنشاء حساب جديد</a>
+          <Link to="/register" className="text-teal-600 font-bold hover:underline">
+  إنشاء حساب جديد
+</Link>
         </div>
       </div>
     </div>

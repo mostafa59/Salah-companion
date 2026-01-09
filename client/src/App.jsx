@@ -1,33 +1,29 @@
-// client/src/App.jsx
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider } from './context/AuthContext';
-import Login from './components/Login';
-
-// A simple placeholder for the Dashboard
-const DashboardPlaceholder = () => (
-  <div className="p-10 text-center">
-    <h1 className="text-2xl font-bold text-[#218084]">Welcome to Dashboard</h1>
-    <p>You are logged in!</p>
-  </div>
-);
+import { Routes, Route, Navigate } from 'react-router-dom';
+import { useContext } from 'react';
+import { AuthContext } from './context/AuthContext';
+import Login from './pages/Login';
+import Register from './pages/Signup'; // Double check this name!
+import Dashboard from './pages/Dashboard';
+import Calendar from './pages/Calendar'; // New
+import Missed from './pages/Missed';     // New
 
 function App() {
+  const { user, loading } = useContext(AuthContext);
+
+  if (loading) return <div className="p-10 text-center">Loading...</div>;
+
   return (
-    <AuthProvider>
-      <Router>
-        <Routes>
-          {/* Default route redirects to Login */}
-          <Route path="/" element={<Navigate to="/login" replace />} />
-          
-          {/* Login Route */}
-          <Route path="/login" element={<Login />} />
-          
-          {/* Protected Dashboard Route */}
-          <Route path="/dashboard" element={<DashboardPlaceholder />} />
-        </Routes>
-      </Router>
-    </AuthProvider>
+    <Routes>
+      <Route path="/login" element={!user ? <Login /> : <Navigate to="/dashboard" />} />
+      <Route path="/register" element={!user ? <Register /> : <Navigate to="/dashboard" />} />
+      
+      {/* Protected App Routes */}
+      <Route path="/dashboard" element={user ? <Dashboard /> : <Navigate to="/login" />} />
+      <Route path="/calendar" element={user ? <Calendar /> : <Navigate to="/login" />} />
+      <Route path="/missed" element={user ? <Missed /> : <Navigate to="/login" />} />
+      
+      <Route path="/" element={<Navigate to={user ? "/dashboard" : "/login"} />} />
+    </Routes>
   );
 }
 

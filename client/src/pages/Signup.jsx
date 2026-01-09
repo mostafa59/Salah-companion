@@ -29,7 +29,7 @@ export default function Signup({ setUser }) {
       localStorage.setItem('token', response.data.token);
       localStorage.setItem('user', JSON.stringify(response.data.user));
       setUser(response.data.user);
-      navigate('/');
+      navigate('/dashboard');
     } catch (err) {
       setError(err.response?.data?.error || 'حدث خطأ في إنشاء الحساب');
     } finally {
