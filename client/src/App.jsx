@@ -6,6 +6,8 @@ import Register from './pages/Signup'; // Double check this name!
 import Dashboard from './pages/Dashboard';
 import Calendar from './pages/Calendar'; // New
 import Missed from './pages/Missed';     // New
+import Profile from './pages/Profile';
+
 
 function App() {
   const { user, loading } = useContext(AuthContext);
@@ -21,7 +23,7 @@ function App() {
       <Route path="/dashboard" element={user ? <Dashboard /> : <Navigate to="/login" />} />
       <Route path="/calendar" element={user ? <Calendar /> : <Navigate to="/login" />} />
       <Route path="/missed" element={user ? <Missed /> : <Navigate to="/login" />} />
-      
+      <Route path="/profile" element={<Profile />} />
       <Route path="/" element={<Navigate to={user ? "/dashboard" : "/login"} />} />
     </Routes>
   );

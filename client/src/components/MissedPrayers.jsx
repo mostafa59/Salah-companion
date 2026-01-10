@@ -1,113 +1,84 @@
-import React, { useState } from 'react';
+import { useState, useContext, useEffect } from 'react';
+import { AuthContext } from '../context/AuthContext';
+import BottomTabs from '../components/BottomTabs';
+import authService from '../services/api';
 
-export default function MissedPrayers() {
-  // Mock Data: Total missed prayers historically
-  const [missedStats, setMissedStats] = useState({
-    fajr: 12,
-    dhuhr: 5,
-    asr: 8,
-    maghrib: 2,
-    isha: 15
+const PRAYERS = [
+  { key: 'fajr', label: 'الفجر' },
+  { key: 'dhuhr', label: 'الظهر' },
+  { key: 'asr', label: 'العصر' },
+  { key: 'maghrib', label: 'المغرب' },
+  { key: 'isha', label: 'العشاء' },
+];
+
+const MissedPrayers = () => {
+  const { user } = useContext(AuthContext);
+  
+  // State for tracking missed counts
+  const [missedCounts, setMissedCounts] = useState({
+    fajr: 0, dhuhr: 0, asr: 0, maghrib: 0, isha: 0
   });
 
-  const [showModal, setShowModal] = useState(false);
-  const [selectedPrayer, setSelectedPrayer] = useState('fajr');
+  // Load data on mount (Mock for now, normally API)
+  useEffect(() => {
+    // Ideally: authService.getMissedPrayers(user.id).then(...)
+    // For now, let's just use local state or mock
+  }, []);
 
-  const totalMissed = Object.values(missedStats).reduce((a, b) => a + b, 0);
-
-  const handleQadaClick = () => {
-    setShowModal(true);
+  const handleAdjust = (key, amount) => {
+    setMissedCounts(prev => {
+      const newVal = Math.max(0, prev[key] + amount);
+      return { ...prev, [key]: newVal };
+    });
+    // authService.updateMissed(user.id, key, amount);
   };
 
-  const handleComplete = () => {
-    if (missedStats[selectedPrayer] > 0) {
-      setMissedStats({
-        ...missedStats,
-        [selectedPrayer]: missedStats[selectedPrayer] - 1
-      });
-      setShowModal(false);
-      alert(`بارك الله فيك! تم تسجيل قضاء صلاة ${
-        selectedPrayer === 'fajr' ? 'الفجر' :
-        selectedPrayer === 'dhuhr' ? 'الظهر' :
-        selectedPrayer === 'asr' ? 'العصر' :
-        selectedPrayer === 'maghrib' ? 'المغرب' : 'العشاء'
-      }`);
-    }
-  };
+  const totalMissed = Object.values(missedCounts).reduce((a, b) => a + b, 0);
 
   return (
-    <>
-      <div className="bg-white p-6 rounded-2xl shadow-lg mt-6 border-t-4 border-red-500">
-        <div className="flex justify-between items-start mb-4">
-          <div>
-            <h2 className="text-gray-700 font-bold">الصلوات الفائتة (القضاء)</h2>
-            <p className="text-xs text-gray-400">تابع ما عليك لتقضيه</p>
-          </div>
-          <div className="bg-red-100 text-red-800 px-3 py-1 rounded-full text-xs font-bold">
-            {totalMissed} صلاة
-          </div>
-        </div>
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pb-24 font-sans" dir="rtl">
+      
+      {/* Header */}
+      <header className="bg-amber-600 dark:bg-amber-800 text-white p-6 rounded-b-3xl shadow-lg mb-6 text-center">
+        <h1 className="text-2xl font-bold mb-2">الصلوات الفائتة</h1>
+        <div className="text-5xl font-bold font-mono my-4">{totalMissed}</div>
+        <p className="opacity-80 text-sm">صلاة في ذمتك</p>
+      </header>
 
-        <div className="grid grid-cols-5 gap-2 text-center">
-          {Object.entries(missedStats).map(([name, count]) => (
-            <div key={name} className="flex flex-col items-center">
-              <div className="w-full bg-red-50 rounded-t-lg py-2 border-b-2 border-red-100">
-                <span className="text-xs font-bold text-gray-600">
-                  {name === 'fajr' && 'فجر'}
-                  {name === 'dhuhr' && 'ظهر'}
-                  {name === 'asr' && 'عصر'}
-                  {name === 'maghrib' && 'مغرب'}
-                  {name === 'isha' && 'عشاء'}
-                </span>
-              </div>
-              <div className="w-full bg-gray-50 rounded-b-lg py-2">
-                <span className="text-lg font-bold text-red-600">{count}</span>
-              </div>
+      <div className="container mx-auto p-4 max-w-md space-y-4">
+        {PRAYERS.map((p) => (
+          <div key={p.key} className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 flex justify-between items-center">
+            
+            <span className="font-bold text-lg text-gray-700 dark:text-gray-200">{p.label}</span>
+            
+            <div className="flex items-center gap-4">
+              {/* Decrement Button (I prayed it!) */}
+              <button 
+                onClick={() => handleAdjust(p.key, -1)}
+                className="w-10 h-10 rounded-full bg-teal-100 dark:bg-teal-900 text-teal-700 dark:text-teal-300 flex items-center justify-center font-bold text-xl hover:bg-teal-200 transition"
+              >
+                -
+              </button>
+
+              <span className="w-8 text-center font-mono font-bold text-gray-800 dark:text-gray-100 text-xl">
+                {missedCounts[p.key]}
+              </span>
+
+              {/* Increment Button (I missed another one) */}
+              <button 
+                onClick={() => handleAdjust(p.key, 1)}
+                className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 flex items-center justify-center font-bold text-xl hover:bg-red-200 transition"
+              >
+                +
+              </button>
             </div>
-          ))}
-        </div>
-
-        <button 
-          onClick={handleQadaClick}
-          className="w-full mt-4 bg-red-50 text-red-600 py-3 rounded-lg text-sm font-bold hover:bg-red-100 transition active:scale-95"
-        >
-          قضاء صلاة الآن ⚡
-        </button>
+          </div>
+        ))}
       </div>
 
-      {/* Qada Modal */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl w-full max-w-sm p-6 shadow-2xl">
-            <h2 className="text-xl font-bold text-gray-800 mb-4 text-center">قضاء صلاة فائتة</h2>
-            
-            <label className="block text-sm font-bold text-gray-700 mb-2">اختر الصلاة:</label>
-            <select 
-              value={selectedPrayer}
-              onChange={(e) => setSelectedPrayer(e.target.value)}
-              className="w-full p-3 border-2 border-gray-200 rounded-lg mb-6 text-center text-lg font-bold"
-            >
-              {Object.entries(missedStats).map(([key, count]) => (
-                <option key={key} value={key} disabled={count === 0}>
-                  {key === 'fajr' ? 'الفجر' :
-                   key === 'dhuhr' ? 'الظهر' :
-                   key === 'asr' ? 'العصر' :
-                   key === 'maghrib' ? 'المغرب' : 'العشاء'} ({count} متبقية)
-                </option>
-              ))}
-            </select>
-
-            <div className="flex gap-3">
-              <button onClick={handleComplete} className="flex-1 bg-green-600 text-white py-3 rounded-xl font-bold hover:bg-green-700">
-                ✅ تم الأداء
-              </button>
-              <button onClick={() => setShowModal(false)} className="px-4 py-3 text-gray-500 hover:text-gray-700 font-bold">
-                إلغاء
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </>
+      <BottomTabs />
+    </div>
   );
-}
+};
+
+export default MissedPrayers;

@@ -7,7 +7,7 @@ const prayerSchema = new mongoose.Schema({
     required: true
   },
   date: {
-    type: String, // We will store "2026-01-07" directly to avoid Timezone headaches
+    type: String, // Storing as "YYYY-MM-DD" string
     required: true
   },
   prayers: {
@@ -17,11 +17,13 @@ const prayerSchema = new mongoose.Schema({
     maghrib: { type: Boolean, default: false },
     isha: { type: Boolean, default: false }
   },
+  // If you want to track locations in future, add: 
+  // locations: { fajr: String, ... }
   mood: {
     type: String, // "Happy", "Sad", etc.
     default: null
   }
-});
+}, { timestamps: true });
 
 // Compound Index: Ensure a user can only have ONE log per Date
 prayerSchema.index({ user: 1, date: 1 }, { unique: true });

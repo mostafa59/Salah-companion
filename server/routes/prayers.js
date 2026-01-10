@@ -4,25 +4,19 @@ import PrayerLog from '../models/PrayerLog.js';
 const router = express.Router();
 
 // ---------------------------------------------
-// 1. SPECIFIC ROUTES (MUST BE FIRST!) 🚨
+// 1. SPECIFIC ROUTES
 // ---------------------------------------------
 
-// GET: Get Monthly History (For Calendar)
-// URL: /api/prayers/history/all?userId=123
+// GET: Get Monthly History
 router.get('/history/all', async (req, res) => {
   try {
     const { userId } = req.query;
-    // Get ALL logs for this user (only return date & prayers to save bandwidth)
     const logs = await PrayerLog.find({ user: userId }).select('date prayers');
     
-    // Transform into simple object: { "2026-01-07": "full", "2026-01-06": "partial" }
     const history = {};
-    
     logs.forEach(log => {
         const p = log.prayers;
         if (!p) return;
-        
-        // Count how many prayers are TRUE
         const count = [p.fajr, p.dhuhr, p.asr, p.maghrib, p.isha].filter(Boolean).length;
         
         if (count === 5) history[log.date] = 'full';
@@ -41,64 +35,84 @@ router.get('/history/all', async (req, res) => {
 router.get('/streak/count', async (req, res) => {
   try {
     const { userId, currentDate } = req.query;
+    // Find logs sorted by date descending (newest first)
     const logs = await PrayerLog.find({ user: userId }).sort({ date: -1 });
 
     let streak = 0;
+    
+    // Create check date (Start from Yesterday)
     let checkDate = new Date(currentDate);
-    checkDate.setDate(checkDate.getDate() - 1); // Start from yesterday
+    checkDate.setDate(checkDate.getDate() - 1); 
 
+    // Helper to format JS Date to YYYY-MM-DD
+    const toYMD = (d) => d.toISOString().split('T')[0];
+
+    // Check Yesterday backwards
     for (let i = 0; i < logs.length; i++) {
         const log = logs[i];
-        const checkDateString = checkDate.toISOString().split('T')[0];
+        const targetDate = toYMD(checkDate);
 
-        if (log.date === checkDateString) {
+        if (log.date === targetDate) {
             const allPrayed = log.prayers.fajr && log.prayers.dhuhr && log.prayers.asr && log.prayers.maghrib && log.prayers.isha;
             if (allPrayed) {
                 streak++;
-                checkDate.setDate(checkDate.getDate() - 1);
+                checkDate.setDate(checkDate.getDate() - 1); // Move back one day
             } else {
-                break;
+                break; // Streak broken
             }
-        } else if (log.date > checkDateString) {
-             continue; 
+        } else if (log.date > targetDate) {
+             continue; // Skip logs from today/future
         } else {
-            break;
+            break; // Gap in dates -> Streak broken
         }
     }
 
-    // Check Today
+    // Check Today separately (Bonus point)
     const todayLog = logs.find(l => l.date === currentDate);
     if (todayLog) {
         const todayDone = todayLog.prayers.fajr && todayLog.prayers.dhuhr && todayLog.prayers.asr && todayLog.prayers.maghrib && todayLog.prayers.isha;
         if (todayDone) streak++;
     }
 
-    res.json({ streak: streak });
+    res.json({ streak });
   } catch (err) {
     console.error(err);
     res.status(500).json({ msg: 'Server Error' });
   }
 });
 
-// POST: Toggle Prayer
+// POST: Toggle Prayer (FIXED)
 router.post('/toggle', async (req, res) => {
   try {
-    const { userId, date, prayerName, status } = req.body;
+    const { userId, date, prayerName, status, location } = req.body;
+    
+    // Convert 'fajr' to lower case just in case
+    const pKey = prayerName.toLowerCase();
+
     let log = await PrayerLog.findOne({ user: userId, date: date });
 
     if (!log) {
+      // Create new Log
+      const initialPrayers = { fajr: false, dhuhr: false, asr: false, maghrib: false, isha: false };
+      initialPrayers[pKey] = status;
+      
       log = new PrayerLog({
         user: userId,
         date: date,
-        prayers: { [prayerName]: status }
+        prayers: initialPrayers,
+        mood: null
       });
     } else {
-      log.prayers[prayerName] = status;
+      // Update existing
+      // IMPORTANT: Use .set() to ensure Mongoose tracks the change
+      log.set(`prayers.${pKey}`, status);
+      // If you want to log location later, store it similarly
     }
+
     await log.save();
     res.json(log);
   } catch (err) {
-    console.error(err);
+    console.error("Toggle Error:", err);
     res.status(500).send('Server Error');
   }
 });
@@ -108,11 +122,13 @@ router.post('/mood', async (req, res) => {
   try {
     const { userId, date, mood } = req.body;
     let log = await PrayerLog.findOne({ user: userId, date: date });
+    
     if (!log) {
       log = new PrayerLog({ user: userId, date: date, mood: mood });
     } else {
       log.mood = mood;
     }
+    
     await log.save();
     res.json(log);
   } catch (err) {
@@ -122,7 +138,7 @@ router.post('/mood', async (req, res) => {
 });
 
 // ---------------------------------------------
-// 2. GENERIC ROUTES (MUST BE LAST!) 
+// 2. GENERIC ROUTES
 // ---------------------------------------------
 
 // GET: Get Daily Log
@@ -133,8 +149,10 @@ router.get('/:date', async (req, res) => {
     let log = await PrayerLog.findOne({ user: userId, date: date });
 
     if (!log) {
+      // Return empty template if no log exists
       return res.json({ 
-        prayers: { fajr: false, dhuhr: false, asr: false, maghrib: false, isha: false } 
+        prayers: { fajr: false, dhuhr: false, asr: false, maghrib: false, isha: false },
+        mood: null
       });
     }
     res.json(log);

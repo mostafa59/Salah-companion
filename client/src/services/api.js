@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-// YOUR CODESPACE URL (Double check this matches your setup)
+// YOUR CODESPACE URL
 const API_BASE = 'https://zany-space-system-64pwg7rrrp2r6p5-5000.app.github.dev/api'; 
 
 const authService = {
@@ -8,7 +8,6 @@ const authService = {
   register: async (userData) => {
     const config = { headers: { 'Content-Type': 'application/json' } };
     const response = await axios.post(`${API_BASE}/auth/register`, userData, config);
-    
     if (response.data.token) {
       localStorage.setItem('token', response.data.token);
       localStorage.setItem('user', JSON.stringify(response.data.user));
@@ -19,7 +18,6 @@ const authService = {
   login: async (email, password) => {
     const config = { headers: { 'Content-Type': 'application/json' } };
     const response = await axios.post(`${API_BASE}/auth/login`, { email, password }, config);
-    
     if (response.data.token) {
       localStorage.setItem('token', response.data.token);
       localStorage.setItem('user', JSON.stringify(response.data.user));
@@ -34,16 +32,19 @@ const authService = {
 
   // --- PRAYERS (The Checkboxes) ---
   getTodayPrayers: async (userId, date) => {
+    // Returns: { prayers: { fajr: true... }, mood: "Happy" }
     const response = await axios.get(`${API_BASE}/prayers/${date}?userId=${userId}`);
     return response.data;
   },
 
-  togglePrayer: async (userId, date, prayerName, status) => {
+  togglePrayer: async (userId, date, prayerName, status, location = 'home') => {
+    // Sends: userId, date, prayerName (lowercase), status (bool), location (string)
     const response = await axios.post(`${API_BASE}/prayers/toggle`, {
       userId,
       date,
-      prayerName,
-      status
+      prayerName, // Expecting 'fajr', 'dhuhr' etc.
+      status,
+      location
     });
     return response.data;
   },
@@ -63,22 +64,21 @@ const authService = {
     const response = await axios.get(`${API_BASE}/prayers/streak/count?userId=${id}&currentDate=${date}`);
     return response.data;
   },
+
   // --- HISTORY (Calendar) ---
   getHistory: async (userId) => {
-    // GET /api/prayers/history/all?userId=123
     const response = await axios.get(`${API_BASE}/prayers/history/all?userId=${userId}`);
     return response.data;
   },
 
-  // --- QADA (Missed Prayers) - NEW ⚡ ---
+  // --- QADA (Missed Prayers) ---
   getQada: async (userId) => {
-    // GET /api/qada?userId=123
+    // Note: You need to implement this route in backend if not exists
     const response = await axios.get(`${API_BASE}/qada?userId=${userId}`);
     return response.data;
   },
 
   updateQada: async (userId, prayerName, amount) => {
-    // POST /api/qada/update
     const response = await axios.post(`${API_BASE}/qada/update`, {
       userId,
       prayerName,
