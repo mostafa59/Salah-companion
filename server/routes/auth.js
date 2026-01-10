@@ -11,7 +11,7 @@ router.post('/register', async (req, res) => {
     // 1. Log the incoming data
     console.log("📦 Body Received:", req.body);
 
-    const { name, email, password } = req.body;
+    const { name, email, password  } = req.body;
 
     // 2. Validation
     if (!email || !password || !name) {
@@ -61,7 +61,7 @@ router.post('/register', async (req, res) => {
         throw err;
       }
       console.log("🚀 Success! Sending response.");
-      res.json({ token, user: { id: user.id, name: user.name, email: user.email } });
+      res.json({ token, user: { id: user.id, name: user.name, email: user.email, friendCode: user.friendCode } }); // ← ADDED friendCode
     });
 
   } catch (err) {
@@ -83,7 +83,7 @@ router.post('/login', async (req, res) => {
     const payload = { user: { id: user.id } };
     jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '7d' }, (err, token) => {
       if (err) throw err;
-      res.json({ token, user: { id: user.id, name: user.name, email: user.email } });
+      res.json({ token, user: { id: user.id, name: user.name, email: user.email , friendCode: user.friendCode} });
     });
 
   } catch (err) {

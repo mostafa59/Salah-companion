@@ -2,17 +2,20 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { useContext } from 'react';
 import { AuthContext } from './context/AuthContext';
 import Login from './pages/Login';
-import Register from './pages/Signup'; // Double check this name!
+import Register from './pages/Signup';
 import Dashboard from './pages/Dashboard';
-import Calendar from './pages/Calendar'; // New
-import Missed from './pages/Missed';     // New
+import Calendar from './pages/Calendar';
+import Missed from './pages/Missed';
 import Profile from './pages/Profile';
+import Social from './pages/Social'; // <--- NEW IMPORT
 
 
 function App() {
   const { user, loading } = useContext(AuthContext);
 
+
   if (loading) return <div className="p-10 text-center">Loading...</div>;
+
 
   return (
     <Routes>
@@ -23,10 +26,12 @@ function App() {
       <Route path="/dashboard" element={user ? <Dashboard /> : <Navigate to="/login" />} />
       <Route path="/calendar" element={user ? <Calendar /> : <Navigate to="/login" />} />
       <Route path="/missed" element={user ? <Missed /> : <Navigate to="/login" />} />
+      <Route path="/social" element={user ? <Social /> : <Navigate to="/login" />} /> {/* <--- NEW ROUTE */}
       <Route path="/profile" element={<Profile />} />
       <Route path="/" element={<Navigate to={user ? "/dashboard" : "/login"} />} />
     </Routes>
   );
 }
+
 
 export default App;

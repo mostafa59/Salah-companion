@@ -1,99 +1,187 @@
-import { useState, useContext } from 'react';
-import { AuthContext } from '../context/AuthContext';
+import { useState, useEffect } from 'react';
+import { useAuth } from '../context/AuthContext';
 import BottomTabs from '../components/BottomTabs';
+import ThemeToggle from '../components/ThemeToggle';
 
-const Social = () => {
-  const { user } = useContext(AuthContext);
+function Social() {
+  const { user } = useAuth();
   const [friendCode, setFriendCode] = useState('');
-  
-  // Mock Data for now (Later we fetch from API)
-  const [friends, setFriends] = useState([
-    { id: 1, name: 'Ahmed', status: 'sleeping', lastSeen: '5 hours ago' },
-    { id: 2, name: 'Sara', status: 'awake', lastSeen: 'Just now' },
-    { id: 3, name: 'Omar', status: 'prayed', lastSeen: '10 mins ago' },
-  ]);
+  const [message, setMessage] = useState('');
+  const [friends, setFriends] = useState([]);
+  const [pendingRequests, setPendingRequests] = useState({ incoming: [], outgoing: [] });
 
-  const handleAddFriend = (e) => {
-    e.preventDefault();
-    alert(`Searching for friend: ${friendCode}`);
-    setFriendCode('');
+  useEffect(() => {
+    if (user && user._id) {
+      fetchFriends();
+      fetchPendingRequests();
+    }
+  }, [user]);
+
+  const fetchFriends = async () => {
+    const res = await fetch(`http://localhost:5000/api/friends?userId=${user._id}`);
+    const data = await res.json();
+    setFriends(data);
   };
 
-  const sendNudge = (name) => {
-    alert(`🔔 Nudge sent to ${name}!`);
+  const fetchPendingRequests = async () => {
+    const res = await fetch(`http://localhost:5000/api/friends/requests?userId=${user._id}`);
+    const data = await res.json();
+    setPendingRequests(data);
+  };
+
+  const sendFriendRequest = async () => {
+    const res = await fetch('http://localhost:5000/api/friends/add', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: user._id, friendCode })
+    });
+    const data = await res.json();
+    setMessage(data.msg);
+    setFriendCode('');
+    fetchPendingRequests();
+  };
+
+  const respondToRequest = async (friendshipId, action) => {
+    const res = await fetch('http://localhost:5000/api/friends/respond', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: user._id, friendshipId, action })
+    });
+    const data = await res.json();
+    setMessage(data.msg);
+    fetchFriends();
+    fetchPendingRequests();
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pb-24 font-sans" dir="rtl">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 dark:text-gray-100 pb-24 font-sans transition-colors duration-300" dir="rtl">
       
-      {/* Header */}
-      <header className="bg-indigo-600 dark:bg-indigo-900 text-white p-6 rounded-b-3xl shadow-lg mb-6">
-        <h1 className="text-2xl font-bold mb-1">نادي الفجر 🛡️</h1>
-        <p className="opacity-80 text-sm">شجع أصدقاءك على الطاعة</p>
-        
-        {/* My Code Card */}
-        <div className="mt-6 bg-white/10 backdrop-blur-sm p-4 rounded-xl border border-white/20 flex justify-between items-center">
-            <div>
-                <p className="text-xs opacity-70">كود الإضافة الخاص بك</p>
-                <p className="font-mono font-bold text-xl tracking-widest">{user?.name?.toUpperCase() || 'USER'}-99</p>
-            </div>
-            <button className="bg-white text-indigo-600 px-3 py-1 rounded-lg text-xs font-bold shadow-sm">نسخ</button>
+      {/* HEADER - Same as Dashboard */}
+      <header className="bg-teal-700 dark:bg-teal-900 text-white p-4 shadow-md sticky top-0 z-10 flex justify-between items-center transition-colors">
+        <div className="flex items-center gap-3">
+          <h1 className="text-xl font-bold">الأصدقاء 👥</h1>
+          <ThemeToggle />
+        </div>
+        <div className="flex items-center gap-2 bg-teal-800 dark:bg-teal-950 px-3 py-1 rounded-full text-sm shadow-inner">
+          <span className="font-bold">{friends.length}</span>
+          <span>صديق</span>
         </div>
       </header>
 
-      <div className="container mx-auto p-4 max-w-md space-y-6">
+      <div className="container mx-auto p-4 space-y-6 max-w-md animate-in fade-in duration-500">
         
-        {/* Add Friend Input */}
-        <form onSubmit={handleAddFriend} className="flex gap-2">
-            <input 
-                type="text" 
-                placeholder="أدخل كود الصديق..." 
-                className="flex-1 p-3 rounded-xl border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500"
-                value={friendCode}
-                onChange={(e) => setFriendCode(e.target.value)}
-            />
-            <button type="submit" className="bg-indigo-600 text-white px-6 rounded-xl font-bold hover:bg-indigo-700 transition">
-                + إضافة
-            </button>
-        </form>
+        {/* Your Friend Code - Updated Design */}
+        <div className="bg-gradient-to-br from-purple-600 to-purple-800 dark:from-purple-800 dark:to-purple-900 rounded-2xl p-6 text-white text-center shadow-lg">
+          <h2 className="text-sm opacity-80 mb-2">رمز الصداقة الخاص بك</h2>
+          <div className="text-3xl font-bold font-mono bg-white/20 inline-block px-6 py-2 rounded-lg backdrop-blur-sm mb-2">
+           {user?.friendCode || user?.friendcode || JSON.stringify(user) || 'جاري التحميل...'}
+          </div>
+          <p className="text-xs opacity-75">شارك هذا الرمز مع الأصدقاء ليتمكنوا من إضافتك</p>
+        </div>
 
-        {/* Friends List */}
-        <div className="space-y-3">
-            <h3 className="font-bold text-gray-700 dark:text-gray-300">أصدقائي ({friends.length})</h3>
-            
-            {friends.map(friend => (
-                <div key={friend.id} className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        {/* Avatar with Status Ring */}
-                        <div className={`relative w-12 h-12 rounded-full flex items-center justify-center text-xl bg-gray-100 dark:bg-gray-700 border-2 ${
-                            friend.status === 'prayed' ? 'border-green-500' : 
-                            friend.status === 'awake' ? 'border-yellow-400' : 'border-gray-300'
-                        }`}>
-                            {friend.status === 'prayed' ? '🤲' : '😴'}
-                            
-                            {/* Online Dot */}
-                            {friend.status !== 'sleeping' && (
-                                <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white dark:border-gray-800"></div>
-                            )}
-                        </div>
-                        
-                        <div>
-                            <h4 className="font-bold text-gray-800 dark:text-gray-100">{friend.name}</h4>
-                            <p className="text-xs text-gray-400">{friend.status === 'prayed' ? 'صلى الفجر ✅' : 'لم يصلِ بعد'}</p>
-                        </div>
-                    </div>
+        {/* Add Friend Section - Redesigned */}
+        <div className="bg-white dark:bg-gray-800 rounded-xl p-5 shadow-sm border border-gray-100 dark:border-gray-700 transition-colors">
+          <h3 className="font-bold text-gray-800 dark:text-gray-200 mb-4 flex items-center gap-2">
+            <span>➕</span>
+            <span>إضافة صديق جديد</span>
+          </h3>
+          <input
+            type="text"
+            placeholder="أدخل رمز الصديق (مثال: PLAYER123)"
+            value={friendCode}
+            onChange={(e) => setFriendCode(e.target.value.toUpperCase())}
+            className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-600 dark:bg-gray-700 rounded-lg mb-3 focus:border-teal-500 focus:outline-none transition-colors"
+          />
+          <button 
+            onClick={sendFriendRequest}
+            className="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 rounded-lg transition-all hover:scale-[1.02] active:scale-95"
+          >
+            إرسال طلب صداقة
+          </button>
+          {message && (
+            <div className="mt-3 p-3 bg-teal-50 dark:bg-teal-900/30 border-r-4 border-teal-500 rounded text-sm text-teal-800 dark:text-teal-200">
+              {message}
+            </div>
+          )}
+        </div>
 
-                    {/* Action Button */}
-                    {friend.status !== 'prayed' && (
-                        <button 
-                            onClick={() => sendNudge(friend.name)}
-                            className="bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-300 px-3 py-1 rounded-lg text-xs font-bold hover:bg-red-100 transition animate-pulse"
-                        >
-                            🔔 أيقظه
-                        </button>
-                    )}
+        {/* INCOMING REQUESTS */}
+        {pendingRequests.incoming.length > 0 && (
+          <div className="bg-gradient-to-br from-pink-500 to-rose-500 dark:from-pink-700 dark:to-rose-700 rounded-xl p-4 shadow-lg">
+            <h3 className="text-white font-bold mb-3 flex items-center gap-2">
+              <span>📬</span>
+              <span>طلبات الصداقة الواردة</span>
+            </h3>
+            <div className="space-y-2">
+              {pendingRequests.incoming.map(req => (
+                <div key={req.id} className="bg-white dark:bg-gray-800 rounded-lg p-4 flex justify-between items-center">
+                  <div>
+                    <strong className="text-gray-800 dark:text-gray-200 block">{req.from.name}</strong>
+                    <small className="text-gray-500 dark:text-gray-400">{req.from.code}</small>
+                  </div>
+                  <div className="flex gap-2">
+                    <button 
+                      onClick={() => respondToRequest(req.id, 'accept')}
+                      className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg font-bold transition-all hover:scale-105"
+                    >
+                      ✓ قبول
+                    </button>
+                    <button 
+                      onClick={() => respondToRequest(req.id, 'reject')}
+                      className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg font-bold transition-all hover:scale-105"
+                    >
+                      ✕ رفض
+                    </button>
+                  </div>
                 </div>
-            ))}
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* OUTGOING REQUESTS */}
+        {pendingRequests.outgoing.length > 0 && (
+          <div className="bg-gradient-to-br from-blue-400 to-cyan-400 dark:from-blue-600 dark:to-cyan-600 rounded-xl p-4 shadow-lg">
+            <h3 className="text-white font-bold mb-3 flex items-center gap-2">
+              <span>⏳</span>
+              <span>طلبات مرسلة</span>
+            </h3>
+            <div className="space-y-2">
+              {pendingRequests.outgoing.map(req => (
+                <div key={req.id} className="bg-white dark:bg-gray-800 rounded-lg p-4">
+                  <strong className="text-gray-800 dark:text-gray-200 block">{req.to.name}</strong>
+                  <small className="text-gray-500 dark:text-gray-400">في انتظار الرد...</small>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Friends List - Redesigned */}
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden transition-colors">
+          <div className="p-4 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
+            <h2 className="font-bold text-gray-800 dark:text-gray-200 flex items-center gap-2">
+              <span>✅</span>
+              <span>أصدقاؤك ({friends.length})</span>
+            </h2>
+          </div>
+          <div className="divide-y divide-gray-100 dark:divide-gray-700">
+            {friends.length === 0 ? (
+              <p className="p-6 text-center text-gray-500 dark:text-gray-400">
+                لا يوجد أصدقاء بعد. أضف شخصًا باستخدام رمزه!
+              </p>
+            ) : (
+              friends.map(friend => (
+                <div key={friend.id} className="p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors flex justify-between items-center">
+                  <div>
+                    <span className="font-bold text-gray-800 dark:text-gray-200 block">{friend.name}</span>
+                    <small className="text-gray-500 dark:text-gray-400">{friend.code}</small>
+                  </div>
+                  <span className="text-2xl">👤</span>
+                </div>
+              ))
+            )}
+          </div>
         </div>
 
       </div>
@@ -101,6 +189,6 @@ const Social = () => {
       <BottomTabs />
     </div>
   );
-};
+}
 
 export default Social;

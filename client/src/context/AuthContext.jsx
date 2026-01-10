@@ -10,12 +10,32 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+  const loadUser = async () => {
     const savedUser = localStorage.getItem('user');
     if (savedUser) {
-      setUser(JSON.parse(savedUser));
+      const parsedUser = JSON.parse(savedUser);
+      setUser(parsedUser);
+      
+      // Fetch fresh user data from server to get friendCode
+      try {
+        const response = await fetch(`http://localhost:5000/api/users/${parsedUser.id}`);
+        const freshUserData = await response.json();
+        
+        // Update user with fresh data including friendCode
+        setUser(freshUserData);
+        
+        // Update localStorage with complete data
+        localStorage.setItem('user', JSON.stringify(freshUserData));
+      } catch (error) {
+        console.error('Failed to fetch user data:', error);
+      }
     }
     setLoading(false);
-  }, []);
+  };
+  
+  loadUser();
+}, []);
+
 
   const login = async (email, password) => {
     const response = await authService.login(email, password);

@@ -1,17 +1,22 @@
 import { useNavigate, useLocation } from 'react-router-dom';
 
+
 const BottomTabs = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
+
   const isActive = (path) => location.pathname === path;
+
 
   const navItems = [
     { path: '/dashboard', label: 'اليوم', icon: '🏠' },
     { path: '/calendar', label: 'التقويم', icon: '📅' },
+    { path: '/social', label: 'الأصدقاء', icon: '👥' }, // <--- NEW TAB
     { path: '/missed', label: 'الفائتة', icon: '⚡' },
-    { path: '/profile', label: 'حسابي', icon: '👤' }, // <--- ADDED THIS ✅
+    { path: '/profile', label: 'حسابي', icon: '👤' },
   ];
+
 
   return (
     <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 shadow-lg pb-safe z-50 transition-colors">
@@ -34,5 +39,6 @@ const BottomTabs = () => {
     </div>
   );
 };
+
 
 export default BottomTabs;

@@ -1,10 +1,14 @@
 import React, { useContext } from 'react';
 import { AuthContext } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom'; // <--- NEW IMPORT
 import BottomTabs from '../components/BottomTabs';
 import Badge from '../components/Badge';
 
+
 const Profile = () => {
-  const { user } = useContext(AuthContext);
+  const { user, logout } = useContext(AuthContext); // <--- ADDED logout
+  const navigate = useNavigate(); // <--- NEW
+
 
   // Mock Badges (Logic to be added later)
   const badges = [
@@ -13,6 +17,13 @@ const Profile = () => {
     { id: 3, title: 'أسبوع كامل', icon: '🔥', desc: 'حافظت على الصلاة لمدة 7 أيام', unlocked: false },
     { id: 4, title: 'صلاة الجماعة', icon: '🕌', desc: 'سجلت صلاة في المسجد', unlocked: false },
   ];
+
+  // LOGOUT HANDLER
+  const handleLogout = () => {
+    logout(); // Clears localStorage
+    navigate('/login'); // Redirects to login
+  };
+
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pb-24 font-sans" dir="rtl">
@@ -26,6 +37,7 @@ const Profile = () => {
         </div>
         <h1 className="text-2xl font-bold">{user?.name || 'ضيف'}</h1>
         <p className="opacity-80 text-sm">{user?.email}</p>
+
 
         {/* Floating Stat Card */}
         <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 w-4/5 bg-white dark:bg-gray-800 p-4 rounded-xl shadow-md flex justify-around border border-gray-100 dark:border-gray-700">
@@ -41,6 +53,7 @@ const Profile = () => {
         </div>
       </div>
 
+
       {/* Badges Grid */}
       <div className="container mx-auto p-6 pt-16 max-w-md">
         <h2 className="font-bold text-gray-800 dark:text-gray-200 mb-4 text-lg">إنجازاتي 🏆</h2>
@@ -55,11 +68,25 @@ const Profile = () => {
             />
           ))}
         </div>
+
+        {/* LOGOUT BUTTON - NEW SECTION */}
+        <div className="mt-8">
+          <button
+            onClick={handleLogout}
+            className="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-6 rounded-lg shadow-md transition-all duration-200 flex items-center justify-center gap-2"
+          >
+            <span>🚪</span>
+            <span>تسجيل الخروج</span>
+          </button>
+        </div>
+
       </div>
+
 
       <BottomTabs />
     </div>
   );
 };
+
 
 export default Profile;
