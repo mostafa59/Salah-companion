@@ -6,6 +6,33 @@ import { generateFriendCode } from '../utils/codeGenerator.js';
 
 const router = express.Router();
 
+// --- ENDPOINT 0: Get All Friends (Simple List) ---
+router.get('/', async (req, res) => {
+  const { userId } = req.query;
+  
+  try {
+    const friendships = await Friendship.find({
+      $or: [{ requester: userId }, { recipient: userId }],
+      status: 'accepted'
+    }).populate('requester recipient', 'name friendCode');
+    
+    const friends = friendships.map(f => {
+      const friend = f.requester._id.toString() === userId ? f.recipient : f.requester;
+      return {
+        id: friend._id,
+        name: friend.name,
+        code: friend.friendCode
+      };
+    });
+    
+    res.json(friends);
+    
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ msg: 'Server Error' });
+  }
+});
+
 // --- ENDPOINT 1: Generate Friend Code ---
 router.post('/generate-code', async (req, res) => {
   const { userId } = req.body;
@@ -119,12 +146,11 @@ router.get('/status', async (req, res) => {
   }
 });
 
-// --- ENDPOINT 4: Accept Friend Request (TEMPORARY FOR TESTING) ---
+// --- ENDPOINT 4: Accept Friend Request ---
 router.post('/accept', async (req, res) => {
   const { userId, friendId } = req.body;
   
   try {
-    // Find the friendship in either direction
     const friendship = await Friendship.findOne({
       $or: [
         { requester: userId, recipient: friendId },
@@ -136,7 +162,6 @@ router.post('/accept', async (req, res) => {
       return res.status(404).json({ msg: "Friendship not found" });
     }
     
-    // Update status to accepted
     friendship.status = 'accepted';
     await friendship.save();
     
@@ -148,12 +173,11 @@ router.post('/accept', async (req, res) => {
   }
 });
 
-// --- ENDPOINT 5: Nudge Friend (WITH SOCKET.IO) ---
+// --- ENDPOINT 5: Nudge Friend ---
 router.post('/nudge', async (req, res) => {
   const { fromUserId, toUserId } = req.body;
   
   try {
-    // Get both users
     const fromUser = await User.findById(fromUserId).select('name');
     const toUser = await User.findById(toUserId).select('name');
     
@@ -161,7 +185,6 @@ router.post('/nudge', async (req, res) => {
       return res.status(404).json({ msg: "User not found" });
     }
     
-    // Verify they're actually friends
     const friendship = await Friendship.findOne({
       $or: [
         { requester: fromUserId, recipient: toUserId },
@@ -174,10 +197,8 @@ router.post('/nudge', async (req, res) => {
       return res.status(403).json({ msg: "You can only nudge friends" });
     }
     
-    // Log to server
     console.log(`🔔 ${fromUser.name} nudged ${toUser.name}!`);
     
-    // NEW: Emit real-time notification via Socket.io
     const io = req.app.get('io');
     io.to(toUserId).emit('receive_nudge', {
       message: `⏰ استيقظ! ${fromUser.name} ينتظرك لصلاة الفجر! 🕌`,
@@ -195,24 +216,22 @@ router.post('/nudge', async (req, res) => {
     res.status(500).json({ msg: 'Server Error' });
   }
 });
+
 // --- ENDPOINT 6: Get Pending Requests ---
 router.get('/requests', async (req, res) => {
   const { userId } = req.query;
   
   try {
-    // Find all pending friendships involving this user
     const friendships = await Friendship.find({
       $or: [{ requester: userId }, { recipient: userId }],
       status: 'pending'
-    }).populate('requester recipient', 'name friendCode'); // Get user details
+    }).populate('requester recipient', 'name friendCode');
     
-    // Separate into incoming and outgoing
     const incoming = [];
     const outgoing = [];
     
     friendships.forEach(f => {
       if (f.recipient._id.toString() === userId) {
-        // Someone sent YOU a request
         incoming.push({
           id: f._id,
           from: {
@@ -223,7 +242,6 @@ router.get('/requests', async (req, res) => {
           createdAt: f.createdAt
         });
       } else {
-        // YOU sent someone a request
         outgoing.push({
           id: f._id,
           to: {
@@ -246,7 +264,7 @@ router.get('/requests', async (req, res) => {
 
 // --- ENDPOINT 7: Respond to Friend Request ---
 router.post('/respond', async (req, res) => {
-  const { userId, friendshipId, action } = req.body; // action: 'accept' or 'reject'
+  const { userId, friendshipId, action } = req.body;
   
   try {
     const friendship = await Friendship.findById(friendshipId);
@@ -255,7 +273,6 @@ router.post('/respond', async (req, res) => {
       return res.status(404).json({ msg: "Request not found" });
     }
     
-    // Security: Make sure YOU are the recipient (only recipient can accept/reject)
     if (friendship.recipient.toString() !== userId) {
       return res.status(403).json({ msg: "You can only respond to requests sent to you" });
     }
@@ -265,7 +282,7 @@ router.post('/respond', async (req, res) => {
       await friendship.save();
       res.json({ msg: "Friend request accepted! 🎉", friendship });
     } else if (action === 'reject') {
-      await friendship.deleteOne(); // Remove the request entirely
+      await friendship.deleteOne();
       res.json({ msg: "Friend request rejected", success: true });
     } else {
       res.status(400).json({ msg: "Invalid action" });
@@ -277,5 +294,4 @@ router.post('/respond', async (req, res) => {
   }
 });
 
-
-export default router;
+export default router; // ← THIS IS THE CRITICAL LINE!

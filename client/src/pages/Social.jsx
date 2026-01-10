@@ -4,54 +4,86 @@ import BottomTabs from '../components/BottomTabs';
 import ThemeToggle from '../components/ThemeToggle';
 
 function Social() {
-  const { user } = useAuth();
+  const { user, loading } = useAuth(); // ← Get loading state too!
+  const API_BASE = 'https://zany-space-system-64pwg7rrrp2r6p5-5000.app.github.dev/api';
+  
   const [friendCode, setFriendCode] = useState('');
   const [message, setMessage] = useState('');
   const [friends, setFriends] = useState([]);
   const [pendingRequests, setPendingRequests] = useState({ incoming: [], outgoing: [] });
 
   useEffect(() => {
-    if (user && user._id) {
+    if (user && user.id) { // ← Changed from user._id to user.id
       fetchFriends();
       fetchPendingRequests();
     }
   }, [user]);
 
   const fetchFriends = async () => {
-    const res = await fetch(`http://localhost:5000/api/friends?userId=${user._id}`);
-    const data = await res.json();
-    setFriends(data);
+    try {
+      const res = await fetch(`${API_BASE}/friends?userId=${user.id}`); // ← Changed to user.id
+      const data = await res.json();
+      setFriends(data);
+    } catch (error) {
+      console.error('Fetch friends error:', error);
+    }
   };
 
   const fetchPendingRequests = async () => {
-    const res = await fetch(`http://localhost:5000/api/friends/requests?userId=${user._id}`);
-    const data = await res.json();
-    setPendingRequests(data);
+    try {
+      const res = await fetch(`${API_BASE}/friends/requests?userId=${user.id}`); // ← Changed to user.id
+      const data = await res.json();
+      setPendingRequests(data);
+    } catch (error) {
+      console.error('Fetch pending requests error:', error);
+    }
   };
 
   const sendFriendRequest = async () => {
-    const res = await fetch('http://localhost:5000/api/friends/add', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId: user._id, friendCode })
-    });
-    const data = await res.json();
-    setMessage(data.msg);
-    setFriendCode('');
-    fetchPendingRequests();
+    try {
+      const res = await fetch(`${API_BASE}/friends/add`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.id, friendCode }) // ← Changed to user.id
+      });
+      const data = await res.json();
+      setMessage(data.msg);
+      setFriendCode('');
+      fetchPendingRequests();
+    } catch (error) {
+      console.error('Send friend request error:', error);
+      setMessage('حدث خطأ في إرسال الطلب');
+    }
   };
 
   const respondToRequest = async (friendshipId, action) => {
-    const res = await fetch('http://localhost:5000/api/friends/respond', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId: user._id, friendshipId, action })
-    });
-    const data = await res.json();
-    setMessage(data.msg);
-    fetchFriends();
-    fetchPendingRequests();
+    try {
+      const res = await fetch(`${API_BASE}/friends/respond`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.id, friendshipId, action }) // ← Changed to user.id
+      });
+      const data = await res.json();
+      setMessage(data.msg);
+      fetchFriends();
+      fetchPendingRequests();
+    } catch (error) {
+      console.error('Respond to request error:', error);
+      setMessage('حدث خطأ في الرد على الطلب');
+    }
   };
+
+  // ← ADD THIS: Show loading spinner while user loads
+  if (loading || !user) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600 mx-auto mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-400">جاري التحميل...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 dark:text-gray-100 pb-24 font-sans transition-colors duration-300" dir="rtl">
@@ -74,7 +106,7 @@ function Social() {
         <div className="bg-gradient-to-br from-purple-600 to-purple-800 dark:from-purple-800 dark:to-purple-900 rounded-2xl p-6 text-white text-center shadow-lg">
           <h2 className="text-sm opacity-80 mb-2">رمز الصداقة الخاص بك</h2>
           <div className="text-3xl font-bold font-mono bg-white/20 inline-block px-6 py-2 rounded-lg backdrop-blur-sm mb-2">
-           {user?.friendCode || user?.friendcode || JSON.stringify(user) || 'جاري التحميل...'}
+           {user?.friendCode || 'جاري التحميل...'} 
           </div>
           <p className="text-xs opacity-75">شارك هذا الرمز مع الأصدقاء ليتمكنوا من إضافتك</p>
         </div>

@@ -1,7 +1,6 @@
 import React, { useState, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
-import authService from '../services/api';
 
 export default function Signup() {
   const [formData, setFormData] = useState({
@@ -12,7 +11,7 @@ export default function Signup() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
-  const { setUser } = useContext(AuthContext); // ← Changed from 'login' to 'setUser'
+  const { register } = useContext(AuthContext); // ← Use register from context
 
   const handleChange = (e) => {
     setFormData({
@@ -27,14 +26,15 @@ export default function Signup() {
     setError('');
 
     try {
-      const response = await authService.register(formData);
+      const result = await register(formData); // ← Use context's register function
       
-      // Registration already saved to localStorage, just set the user in context
-      setUser(response.data.user); // ← Fixed: removed the buggy login call
-      
-      navigate('/dashboard');
+      if (result.success) {
+        navigate('/dashboard'); // ← Just navigate, register already set the user!
+      } else {
+        setError(result.error || 'حدث خطأ في إنشاء الحساب');
+      }
     } catch (err) {
-      setError(err.response?.data?.msg || 'حدث خطأ في إنشاء الحساب');
+      setError('حدث خطأ في إنشاء الحساب');
     } finally {
       setLoading(false);
     }
