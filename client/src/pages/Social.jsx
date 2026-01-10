@@ -2,18 +2,21 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import BottomTabs from '../components/BottomTabs';
 import ThemeToggle from '../components/ThemeToggle';
+import toast from 'react-hot-toast';
 
 function Social() {
-  const { user, loading } = useAuth(); // ← Get loading state too!
+  const { user, loading } = useAuth();
   const API_BASE = 'https://zany-space-system-64pwg7rrrp2r6p5-5000.app.github.dev/api';
   
   const [friendCode, setFriendCode] = useState('');
   const [message, setMessage] = useState('');
   const [friends, setFriends] = useState([]);
   const [pendingRequests, setPendingRequests] = useState({ incoming: [], outgoing: [] });
+  const [cooldowns, setCooldowns] = useState({});
+  const [soundEnabled, setSoundEnabled] = useState(false);
 
   useEffect(() => {
-    if (user && user.id) { // ← Changed from user._id to user.id
+    if (user && user.id) {
       fetchFriends();
       fetchPendingRequests();
     }
@@ -21,7 +24,7 @@ function Social() {
 
   const fetchFriends = async () => {
     try {
-      const res = await fetch(`${API_BASE}/friends?userId=${user.id}`); // ← Changed to user.id
+      const res = await fetch(`${API_BASE}/friends?userId=${user.id}`);
       const data = await res.json();
       setFriends(data);
     } catch (error) {
@@ -31,7 +34,7 @@ function Social() {
 
   const fetchPendingRequests = async () => {
     try {
-      const res = await fetch(`${API_BASE}/friends/requests?userId=${user.id}`); // ← Changed to user.id
+      const res = await fetch(`${API_BASE}/friends/requests?userId=${user.id}`);
       const data = await res.json();
       setPendingRequests(data);
     } catch (error) {
@@ -44,7 +47,7 @@ function Social() {
       const res = await fetch(`${API_BASE}/friends/add`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user.id, friendCode }) // ← Changed to user.id
+        body: JSON.stringify({ userId: user.id, friendCode })
       });
       const data = await res.json();
       setMessage(data.msg);
@@ -61,7 +64,7 @@ function Social() {
       const res = await fetch(`${API_BASE}/friends/respond`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user.id, friendshipId, action }) // ← Changed to user.id
+        body: JSON.stringify({ userId: user.id, friendshipId, action })
       });
       const data = await res.json();
       setMessage(data.msg);
@@ -73,7 +76,66 @@ function Social() {
     }
   };
 
-  // ← ADD THIS: Show loading spinner while user loads
+  const sendNudge = async (friendId, friendName) => {
+    if (cooldowns[friendId]) {
+      toast.error('انتظر قليلاً قبل التنبيه مرة أخرى!', {
+        icon: '⏳',
+        duration: 2000,
+      });
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_BASE}/friends/nudge`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fromUserId: user.id, toUserId: friendId })
+      });
+      const data = await res.json();
+      
+      if (data.success) {
+        toast.success(`تم إيقاظ ${friendName}! 🔔`, {
+          icon: '⏰',
+          duration: 3000,
+        });
+
+        setCooldowns(prev => ({ ...prev, [friendId]: true }));
+        
+        setTimeout(() => {
+          setCooldowns(prev => {
+            const updated = { ...prev };
+            delete updated[friendId];
+            return updated;
+          });
+        }, 10000);
+      } else {
+        toast.error(data.msg || 'فشل إرسال التنبيه');
+      }
+    } catch (error) {
+      console.error('Nudge error:', error);
+      toast.error('فشل إرسال التنبيه');
+    }
+  };
+
+  // ← NEW: Function to enable sound with user interaction
+  const enableSound = () => {
+    // Play a silent audio to unlock browser's audio policy
+    const silentAudio = new Audio('data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=');
+    silentAudio.play()
+      .then(() => {
+        setSoundEnabled(true);
+        toast.success('تم تفعيل الصوت! 🔊', {
+          duration: 2000,
+          icon: '✅',
+        });
+        console.log('✅ Sound enabled successfully!');
+      })
+      .catch((error) => {
+        console.error('Failed to enable sound:', error);
+        toast.error('فشل تفعيل الصوت');
+      });
+  };
+
   if (loading || !user) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
@@ -88,7 +150,6 @@ function Social() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 dark:text-gray-100 pb-24 font-sans transition-colors duration-300" dir="rtl">
       
-      {/* HEADER - Same as Dashboard */}
       <header className="bg-teal-700 dark:bg-teal-900 text-white p-4 shadow-md sticky top-0 z-10 flex justify-between items-center transition-colors">
         <div className="flex items-center gap-3">
           <h1 className="text-xl font-bold">الأصدقاء 👥</h1>
@@ -102,7 +163,36 @@ function Social() {
 
       <div className="container mx-auto p-4 space-y-6 max-w-md animate-in fade-in duration-500">
         
-        {/* Your Friend Code - Updated Design */}
+        {/* ← NEW: Sound Permission Banner */}
+        {!soundEnabled && (
+          <div className="bg-gradient-to-r from-amber-500 to-orange-500 text-white p-4 rounded-xl flex items-center justify-between shadow-lg animate-pulse">
+            <div className="flex items-center gap-3">
+              <span className="text-3xl">🔔</span>
+              <div>
+                <p className="font-bold text-sm">تفعيل التنبيهات الصوتية</p>
+                <p className="text-xs opacity-90">انقر لتفعيل صوت الإشعارات</p>
+              </div>
+            </div>
+            <button 
+              onClick={enableSound}
+              className="bg-white text-amber-600 px-4 py-2 rounded-lg font-bold hover:scale-110 transition-all shadow-md active:scale-95"
+            >
+              تفعيل
+            </button>
+          </div>
+        )}
+
+        {/* ← NEW: Success Banner (shows after enabling sound) */}
+        {soundEnabled && (
+          <div className="bg-gradient-to-r from-green-500 to-teal-500 text-white p-3 rounded-xl flex items-center gap-3 shadow-md">
+            <span className="text-2xl">✅</span>
+            <div>
+              <p className="font-bold text-sm">الصوت مفعّل!</p>
+              <p className="text-xs opacity-90">سوف تسمع التنبيهات الآن 🔊</p>
+            </div>
+          </div>
+        )}
+
         <div className="bg-gradient-to-br from-purple-600 to-purple-800 dark:from-purple-800 dark:to-purple-900 rounded-2xl p-6 text-white text-center shadow-lg">
           <h2 className="text-sm opacity-80 mb-2">رمز الصداقة الخاص بك</h2>
           <div className="text-3xl font-bold font-mono bg-white/20 inline-block px-6 py-2 rounded-lg backdrop-blur-sm mb-2">
@@ -111,7 +201,6 @@ function Social() {
           <p className="text-xs opacity-75">شارك هذا الرمز مع الأصدقاء ليتمكنوا من إضافتك</p>
         </div>
 
-        {/* Add Friend Section - Redesigned */}
         <div className="bg-white dark:bg-gray-800 rounded-xl p-5 shadow-sm border border-gray-100 dark:border-gray-700 transition-colors">
           <h3 className="font-bold text-gray-800 dark:text-gray-200 mb-4 flex items-center gap-2">
             <span>➕</span>
@@ -137,7 +226,6 @@ function Social() {
           )}
         </div>
 
-        {/* INCOMING REQUESTS */}
         {pendingRequests.incoming.length > 0 && (
           <div className="bg-gradient-to-br from-pink-500 to-rose-500 dark:from-pink-700 dark:to-rose-700 rounded-xl p-4 shadow-lg">
             <h3 className="text-white font-bold mb-3 flex items-center gap-2">
@@ -171,7 +259,6 @@ function Social() {
           </div>
         )}
 
-        {/* OUTGOING REQUESTS */}
         {pendingRequests.outgoing.length > 0 && (
           <div className="bg-gradient-to-br from-blue-400 to-cyan-400 dark:from-blue-600 dark:to-cyan-600 rounded-xl p-4 shadow-lg">
             <h3 className="text-white font-bold mb-3 flex items-center gap-2">
@@ -189,7 +276,6 @@ function Social() {
           </div>
         )}
 
-        {/* Friends List - Redesigned */}
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden transition-colors">
           <div className="p-4 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
             <h2 className="font-bold text-gray-800 dark:text-gray-200 flex items-center gap-2">
@@ -209,7 +295,19 @@ function Social() {
                     <span className="font-bold text-gray-800 dark:text-gray-200 block">{friend.name}</span>
                     <small className="text-gray-500 dark:text-gray-400">{friend.code}</small>
                   </div>
-                  <span className="text-2xl">👤</span>
+                  
+                  <button 
+                    onClick={() => sendNudge(friend.id, friend.name)}
+                    disabled={cooldowns[friend.id]}
+                    className={`px-4 py-2 rounded-lg font-bold transition-all flex items-center gap-2 shadow-md ${
+                      cooldowns[friend.id] 
+                        ? 'bg-gray-400 cursor-not-allowed opacity-50'
+                        : 'bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 hover:scale-105 active:scale-95'
+                    }`}
+                  >
+                    <span>{cooldowns[friend.id] ? '⏳' : '🔔'}</span>
+                    <span>{cooldowns[friend.id] ? 'انتظر...' : 'نبّه'}</span>
+                  </button>
                 </div>
               ))
             )}

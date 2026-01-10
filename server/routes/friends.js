@@ -173,17 +173,25 @@ router.post('/accept', async (req, res) => {
   }
 });
 
-// --- ENDPOINT 5: Nudge Friend ---
+// --- ENDPOINT 5: Nudge Friend (ENHANCED WITH DEBUGGING) ---
 router.post('/nudge', async (req, res) => {
   const { fromUserId, toUserId } = req.body;
+  
+  console.log('🔔 === NUDGE REQUEST RECEIVED ===');
+  console.log('📤 From User ID:', fromUserId);
+  console.log('📥 To User ID:', toUserId);
   
   try {
     const fromUser = await User.findById(fromUserId).select('name');
     const toUser = await User.findById(toUserId).select('name');
     
     if (!fromUser || !toUser) {
+      console.log('❌ User not found in database');
       return res.status(404).json({ msg: "User not found" });
     }
+    
+    console.log('👤 From User:', fromUser.name);
+    console.log('👤 To User:', toUser.name);
     
     const friendship = await Friendship.findOne({
       $or: [
@@ -194,17 +202,29 @@ router.post('/nudge', async (req, res) => {
     });
     
     if (!friendship) {
+      console.log('❌ Users are not friends');
       return res.status(403).json({ msg: "You can only nudge friends" });
     }
     
-    console.log(`🔔 ${fromUser.name} nudged ${toUser.name}!`);
+    console.log('✅ Friendship verified');
     
     const io = req.app.get('io');
-    io.to(toUserId).emit('receive_nudge', {
+    console.log('📡 Socket.io instance exists:', !!io);
+    console.log('📡 Emitting to room:', toUserId);
+    
+    const nudgeData = {
       message: `⏰ استيقظ! ${fromUser.name} ينتظرك لصلاة الفجر! 🕌`,
       from: fromUser.name,
       fromId: fromUserId
-    });
+    };
+    
+    console.log('📦 Nudge data:', nudgeData);
+    
+    // Emit the nudge
+    io.to(toUserId).emit('receive_nudge', nudgeData);
+    
+    console.log('✅ Nudge emitted successfully!');
+    console.log('🔔 === NUDGE REQUEST COMPLETE ===\n');
     
     res.json({ 
       msg: `تم إيقاظ ${toUser.name}! 🔔`,
@@ -212,7 +232,7 @@ router.post('/nudge', async (req, res) => {
     });
     
   } catch (err) {
-    console.error(err);
+    console.error('❌ Nudge error:', err);
     res.status(500).json({ msg: 'Server Error' });
   }
 });
@@ -294,4 +314,4 @@ router.post('/respond', async (req, res) => {
   }
 });
 
-export default router; // ← THIS IS THE CRITICAL LINE!
+export default router;
