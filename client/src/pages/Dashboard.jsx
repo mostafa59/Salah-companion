@@ -7,7 +7,12 @@ import BottomTabs from '../components/BottomTabs';
 import ThemeToggle from '../components/ThemeToggle';
 import GardenWidget from '../components/GardenWidget';
 import LocationModal from '../components/LocationModal';
+import PrayerStatusModal from '../components/PrayerStatusModal';
 import confetti from 'canvas-confetti';
+import NotificationBanner from '../components/NotificationBanner';
+import CitySelectorModal from '../components/CitySelectorModal';
+import { getPrayerTimes, getNotificationTimes } from '../services/prayerTimes';
+import { requestNotificationPermission, scheduleNotification } from '../utils/notifications';
 
 const ARABIC_NAMES = {
   Fajr: 'الفجر', Dhuhr: 'الظهر', Asr: 'العصر', Maghrib: 'المغرب', Isha: 'العشاء'
@@ -24,7 +29,7 @@ const QUOTES = [
 ];
 
 const Dashboard = () => {
-  const { user, logout } = useContext(AuthContext);
+  const { user } = useContext(AuthContext);
   const navigate = useNavigate();
 
   const [currentDate] = useState(new Date()); 
@@ -36,34 +41,62 @@ const Dashboard = () => {
   const [nextPrayer, setNextPrayer] = useState({ name: '...', timeLeft: '--:--' });
   const [isLoading, setIsLoading] = useState(true);
 
-  // Pick Daily Quote based on Day of Year
+  const [location, setLocation] = useState(() => {
+    const saved = localStorage.getItem('prayerLocation');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch {
+        return { city: 'Cairo', country: 'Egypt' };
+      }
+    }
+    return { city: 'Cairo', country: 'Egypt' };
+  });
+
   const dayOfYear = Math.floor((new Date() - new Date(new Date().getFullYear(), 0, 0)) / 1000 / 60 / 60 / 24);
   const dailyQuote = QUOTES[dayOfYear % QUOTES.length];
   
-  // --- MODAL STATE ---
   const [selectedPrayer, setSelectedPrayer] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
+  const [prayerStatus, setPrayerStatus] = useState(null);
+  const [isCityModalOpen, setIsCityModalOpen] = useState(false);
 
   const formattedDate = currentDate.toLocaleDateString('en-CA'); 
 
-  // --- API 1: Get Times ---
   useEffect(() => {
-    axios.get(`https://api.aladhan.com/v1/timings/${formattedDate}?latitude=30.0444&longitude=31.2357&method=5`)
-      .then(res => {
-        const t = res.data.data.timings;
-        setPrayerTimes({ Fajr: t.Fajr, Dhuhr: t.Dhuhr, Asr: t.Asr, Maghrib: t.Maghrib, Isha: t.Isha });
-      })
-      .catch(console.error);
-  }, [formattedDate]);
+    if (!location || !location.city || !location.country) return;
 
-  // --- API 2: Get User Data ---
+    const fetchTimes = async () => {
+      try {
+        const url = `https://api.aladhan.com/v1/timingsByCity/${formattedDate}?city=${encodeURIComponent(
+          location.city
+        )}&country=${encodeURIComponent(location.country)}&method=5`;
+        
+        const res = await axios.get(url);
+        const t = res.data.data.timings;
+
+        setPrayerTimes({
+          Fajr: t.Fajr,
+          Dhuhr: t.Dhuhr,
+          Asr: t.Asr,
+          Maghrib: t.Maghrib,
+          Isha: t.Isha
+        });
+      } catch (err) {
+        console.error('Failed to load prayer times:', err);
+      }
+    };
+
+    fetchTimes();
+  }, [formattedDate, location]);
+
   useEffect(() => {
     if (user) {
       setIsLoading(true);
       authService.getTodayPrayers(user.id, formattedDate)
         .then(data => {
             if (data && data.prayers) {
-                // Map lowercase API keys to Capitalized State keys
                 setPrayers({
                     Fajr: data.prayers.fajr, 
                     Dhuhr: data.prayers.dhuhr, 
@@ -78,7 +111,54 @@ const Dashboard = () => {
     }
   }, [user, formattedDate]);
 
-  // --- TIMER LOGIC ---
+  useEffect(() => {
+    if (!user || !location.city) return;
+
+    const setupNotifications = async () => {
+      try {
+        const permission = await requestNotificationPermission();
+        console.log(`📱 Notification permission: ${permission}`);
+
+        if (permission !== 'granted') {
+          console.log('⚠️ User denied notifications');
+          return;
+        }
+
+        const url = `https://api.aladhan.com/v1/timingsByCity/${formattedDate}?city=${encodeURIComponent(
+          location.city
+        )}&country=${encodeURIComponent(location.country)}&method=5`;
+
+        const res = await axios.get(url);
+        const timings = res.data.data.timings;
+
+        const times = {
+          fajr: timings.Fajr,
+          dhuhr: timings.Dhuhr,
+          asr: timings.Asr,
+          maghrib: timings.Maghrib,
+          isha: timings.Isha
+        };
+
+        console.log('✅ Prayer times loaded:', times);
+
+        Object.keys(times).forEach((prayer) => {
+          const notifs = getNotificationTimes(times[prayer]);
+
+          scheduleNotification(prayer, notifs.prep, 'prep');
+          scheduleNotification(prayer, notifs.adhan, 'adhan');
+          scheduleNotification(prayer, notifs.urgent, 'urgent');
+        });
+
+        console.log('🔔 All notifications scheduled for today!');
+      } catch (err) {
+        console.error('❌ Notification setup error:', err);
+      }
+    };
+
+    setupNotifications();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, location.city, formattedDate]);
+
   useEffect(() => {
     const timer = setInterval(() => {
       const now = new Date();
@@ -124,7 +204,6 @@ const Dashboard = () => {
     return () => clearInterval(timer);
   }, [prayerTimes]);
 
-  // --- CELEBRATION HELPER ---
   const triggerCelebration = () => {
     const duration = 3000;
     const end = Date.now() + duration;
@@ -152,37 +231,81 @@ const Dashboard = () => {
     frame();
   };
 
-  // --- HANDLERS ---
+  const isPrayerTimePassed = (prayerKey) => {
+    const time = prayerTimes[prayerKey];
+    if (time === '--:--') return false;
+    
+    const [h, m] = time.split(':').map(Number);
+    const prayerDate = new Date();
+    prayerDate.setHours(h, m, 0);
+    
+    const now = new Date();
+    const diffMinutes = (now - prayerDate) / 1000 / 60;
+    
+    return diffMinutes > 30;
+  };
+
+  const handleChangeLocation = () => {
+    setIsCityModalOpen(true);
+  };
+
+  const handleCitySelect = (newLoc) => {
+    setLocation(newLoc);
+    localStorage.setItem('prayerLocation', JSON.stringify(newLoc));
+  };
+
   const handleCheck = (key) => {
     if (prayers[key]) {
       setPrayers(prev => ({ ...prev, [key]: false }));
       authService.togglePrayer(user.id, formattedDate, key.toLowerCase(), false, null);
       return;
     }
+    
     setSelectedPrayer(key);
-    setIsModalOpen(true);
+    
+    if (isPrayerTimePassed(key)) {
+      setIsStatusModalOpen(true);
+    } else {
+      setPrayerStatus({ onTime: true, kaffarah: 0 });
+      setIsModalOpen(true);
+    }
   };
 
-  const confirmPrayer = (location) => {
+  const handleStatusConfirm = (status) => {
+    setPrayerStatus(status);
+    setIsStatusModalOpen(false);
+    setIsModalOpen(true);
+    
+    if (!status.onTime) {
+      console.log('⏰ User delayed prayer. Kaffarah pledged:', status.kaffarah || 0);
+    }
+  };
+
+  const confirmPrayer = (locationPlace) => {
     if (!selectedPrayer) return;
 
     const key = selectedPrayer;
     
-    // Update State Optimistically
     const updatedPrayers = { ...prayers, [key]: true };
     setPrayers(updatedPrayers);
 
-    // Check for Celebration
     const count = Object.values(updatedPrayers).filter(Boolean).length;
     if (count === 5) {
        triggerCelebration();
     }
 
-    // Save to API
-    authService.togglePrayer(user.id, formattedDate, key.toLowerCase(), true, location);
+    authService.togglePrayer(
+      user.id, 
+      formattedDate, 
+      key.toLowerCase(), 
+      true, 
+      locationPlace,
+      prayerStatus
+    );
 
     setIsModalOpen(false);
     setSelectedPrayer(null);
+    setPrayerStatus(null);
   };
 
   const handleMood = (m) => {
@@ -198,20 +321,28 @@ const Dashboard = () => {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 dark:text-gray-100 pb-24 font-sans transition-colors duration-300" dir="rtl">
       
-      {/* HEADER */}
       <header className="bg-teal-700 dark:bg-teal-900 text-white p-4 shadow-md sticky top-0 z-10 flex justify-between items-center transition-colors">
         <div className="flex items-center gap-3">
-             <h1 className="text-xl font-bold">صديقك في الصلاة</h1>
-             <ThemeToggle />
+          <h1 className="text-xl font-bold">صديقك في الصلاة</h1>
+          <ThemeToggle />
         </div>
-        
-        <div className="flex items-center gap-1 bg-teal-800 dark:bg-teal-950 px-3 py-1 rounded-full text-green-300 font-bold text-sm shadow-inner">
-           <span>{Object.values(prayers).filter(Boolean).length}/5</span>
-           <span>🌱</span>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleChangeLocation}
+            className="text-xs bg-teal-600 hover:bg-teal-500 px-3 py-1 rounded-full shadow-sm"
+          >
+            📍 {location.city || 'Cairo'}
+          </button>
+          <div className="flex items-center gap-1 bg-teal-800 dark:bg-teal-950 px-3 py-1 rounded-full text-green-300 font-bold text-sm shadow-inner">
+            <span>{Object.values(prayers).filter(Boolean).length}/5</span>
+            <span>🌱</span>
+          </div>
         </div>
       </header>
 
-      {/* LOADING STATE */}
+      <NotificationBanner />
+
       {isLoading ? (
         <div className="flex justify-center items-center h-96">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600"></div>
@@ -219,7 +350,6 @@ const Dashboard = () => {
       ) : (
         <div className="container mx-auto p-4 space-y-6 max-w-md animate-in fade-in duration-500">
             
-            {/* TIMER */}
             <div className="bg-gradient-to-br from-teal-600 to-teal-800 dark:from-teal-800 dark:to-teal-900 rounded-2xl p-6 text-white text-center shadow-lg transition-all hover:scale-[1.02]">
             <h2 className="text-sm opacity-80 mb-1">الصلاة القادمة</h2>
             <div className="text-4xl font-bold mb-2">{nextPrayer.name}</div>
@@ -228,10 +358,8 @@ const Dashboard = () => {
             </div>
             </div>
 
-            {/* GARDEN WIDGET */}
             <GardenWidget prayers={prayers} />
 
-            {/* DAILY WISDOM */}
             <div className="bg-amber-50 dark:bg-amber-900/20 border-r-4 border-amber-400 p-4 rounded-lg flex items-center gap-3 shadow-sm">
                 <span className="text-2xl">💡</span>
                 <div>
@@ -240,7 +368,6 @@ const Dashboard = () => {
                 </div>
             </div>
 
-            {/* MOODS */}
             <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-gray-700 transition-colors">
             <h3 className="text-center text-gray-600 dark:text-gray-300 text-sm mb-4">كيف حال قلبك اليوم؟</h3>
             <div className="flex justify-between px-2">
@@ -261,7 +388,6 @@ const Dashboard = () => {
             </div>
             </div>
 
-            {/* PRAYERS LIST */}
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden transition-colors">
             <div className="p-4 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
                 <h2 className="font-bold text-gray-800 dark:text-gray-200">صلوات اليوم</h2>
@@ -289,13 +415,28 @@ const Dashboard = () => {
 
       <BottomTabs />
 
-      {/* LOCATION MODAL */}
+      <PrayerStatusModal
+        isOpen={isStatusModalOpen}
+        onClose={() => {
+          setIsStatusModalOpen(false);
+          setSelectedPrayer(null);
+        }}
+        onConfirm={handleStatusConfirm}
+        prayerName={selectedPrayer ? ARABIC_NAMES[selectedPrayer] : ''}
+      />
+
       <LocationModal 
          isOpen={isModalOpen} 
          onClose={() => setIsModalOpen(false)} 
          onSelect={confirmPrayer} 
       />
 
+      <CitySelectorModal
+        isOpen={isCityModalOpen}
+        onClose={() => setIsCityModalOpen(false)}
+        onSelect={handleCitySelect}
+        currentLocation={location}
+      />
     </div>
   );
 };

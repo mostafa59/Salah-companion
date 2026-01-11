@@ -1,37 +1,40 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
-import { useContext } from 'react';
-import { AuthContext } from './context/AuthContext';
-import Login from './pages/Login';
-import Register from './pages/Signup';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { AuthProvider } from './context/AuthContext';
+import BottomTabs from './components/BottomTabs'; // ADD THIS IMPORT
 import Dashboard from './pages/Dashboard';
-import Calendar from './pages/Calendar';
-import Missed from './pages/Missed';
+import Login from './pages/Login';
+import Register from './pages/Register';
 import Profile from './pages/Profile';
-import Social from './pages/Social'; // <--- NEW IMPORT
-
+import StatsPage from './pages/StatsPage';
+import MonthlyReportPage from './pages/MonthlyReportPage';
+import InsightsPage from './pages/InsightsPage';
+import ChallengesPage from './pages/ChallengesPage';
+import QadaPage from './pages/QadaPage';
 
 function App() {
-  const { user, loading } = useContext(AuthContext);
-
-
-  if (loading) return <div className="p-10 text-center">Loading...</div>;
-
-
   return (
-    <Routes>
-      <Route path="/login" element={!user ? <Login /> : <Navigate to="/dashboard" />} />
-      <Route path="/register" element={!user ? <Register /> : <Navigate to="/dashboard" />} />
-      
-      {/* Protected App Routes */}
-      <Route path="/dashboard" element={user ? <Dashboard /> : <Navigate to="/login" />} />
-      <Route path="/calendar" element={user ? <Calendar /> : <Navigate to="/login" />} />
-      <Route path="/missed" element={user ? <Missed /> : <Navigate to="/login" />} />
-      <Route path="/social" element={user ? <Social /> : <Navigate to="/login" />} /> {/* <--- NEW ROUTE */}
-      <Route path="/profile" element={<Profile />} />
-      <Route path="/" element={<Navigate to={user ? "/dashboard" : "/login"} />} />
-    </Routes>
+    <Router>
+      <AuthProvider>
+        <Routes>
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+           <Route path="/profile" element={<Profile />} />
+
+          
+          {/* NEW PHASE 2 ROUTES */}
+          <Route path="/stats" element={<StatsPage />} />
+          <Route path="/monthly" element={<MonthlyReportPage />} />
+          <Route path="/insights" element={<InsightsPage />} />
+          <Route path="/challenges" element={<ChallengesPage />} />
+          <Route path="/qada" element={<QadaPage />} />
+        </Routes>
+        
+        {/* BottomTabs appears on ALL pages (outside Routes) */}
+        <BottomTabs />
+      </AuthProvider>
+    </Router>
   );
 }
-
 
 export default App;

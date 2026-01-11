@@ -32,5 +32,50 @@ router.get('/:id', async (req, res) => {
     res.status(500).json({ msg: 'Server Error' });
   }
 });
+// ADD TO BOTTOM OF YOUR server/routes/users.js
+
+router.get('/:userId/stats', async (req, res) => {
+  try {
+    const user = await User.findById(req.params.userId);
+    if (!user) return res.status(404).json({ msg: 'User not found' });
+
+    res.json(user.stats);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ msg: 'Server Error' });
+  }
+});
+
+router.put('/:userId/notification-preferences', async (req, res) => {
+  try {
+    const { soundEnabled, reminderMinutes, reminderType } = req.body;
+    const user = await User.findByIdAndUpdate(
+      req.params.userId,
+      {
+        'notificationPreferences.soundEnabled': soundEnabled,
+        'notificationPreferences.reminderMinutes': reminderMinutes,
+        'notificationPreferences.reminderType': reminderType
+      },
+      { new: true }
+    );
+
+    res.json(user.notificationPreferences);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ msg: 'Server Error' });
+  }
+});
+
+router.get('/:userId/qada', async (req, res) => {
+  try {
+    const user = await User.findById(req.params.userId);
+    if (!user) return res.status(404).json({ msg: 'User not found' });
+
+    res.json(user.qada);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ msg: 'Server Error' });
+  }
+});
 
 export default router;

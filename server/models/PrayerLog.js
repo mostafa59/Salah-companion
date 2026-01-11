@@ -7,7 +7,7 @@ const prayerSchema = new mongoose.Schema({
     required: true
   },
   date: {
-    type: String, // Storing as "YYYY-MM-DD" string
+    type: String,
     required: true
   },
   prayers: {
@@ -17,15 +17,54 @@ const prayerSchema = new mongoose.Schema({
     maghrib: { type: Boolean, default: false },
     isha: { type: Boolean, default: false }
   },
-  // If you want to track locations in future, add: 
-  // locations: { fajr: String, ... }
+  prayerMeta: {
+    fajr: {
+      onTime: { type: Boolean, default: true },
+      kaffarah: { type: Number, default: 0 },
+      location: { type: String, default: 'home' }
+    },
+    dhuhr: {
+      onTime: { type: Boolean, default: true },
+      kaffarah: { type: Number, default: 0 },
+      location: { type: String, default: 'home' }
+    },
+    asr: {
+      onTime: { type: Boolean, default: true },
+      kaffarah: { type: Number, default: 0 },
+      location: { type: String, default: 'home' }
+    },
+    maghrib: {
+      onTime: { type: Boolean, default: true },
+      kaffarah: { type: Number, default: 0 },
+      location: { type: String, default: 'home' }
+    },
+    isha: {
+      onTime: { type: Boolean, default: true },
+      kaffarah: { type: Number, default: 0 },
+      location: { type: String, default: 'home' }
+    }
+  },
   mood: {
-    type: String, // "Happy", "Sad", etc.
+    type: String,
     default: null
+  },
+  // ===== NEW FIELDS FOR PHASE 2 =====
+  qada: {
+    type: [String],
+    default: []
+  },
+  qadaCompleted: {
+    type: Boolean,
+    default: false
+  },
+  insights: {
+    missedPrayers: { type: Number, default: 0 },
+    onTimePrayers: { type: Number, default: 0 },
+    locationPattern: { type: String, default: null }
   }
 }, { timestamps: true });
 
-// Compound Index: Ensure a user can only have ONE log per Date
 prayerSchema.index({ user: 1, date: 1 }, { unique: true });
+prayerSchema.index({ user: 1 });
 
 export default mongoose.model('PrayerLog', prayerSchema);
